@@ -1,14 +1,15 @@
-import streamlit as st
 import os
+
+import streamlit as st
 from langchain.document_loaders import TextLoader
+from langchain.embeddings.base import Embeddings
+from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
-from langchain.embeddings.base import Embeddings
-from sentence_transformers import SentenceTransformer
 from langchain_community.vectorstores import SKLearnVectorStore
-from langchain_ollama import ChatOllama
-from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_ollama import ChatOllama
+from sentence_transformers import SentenceTransformer
 
 # Initialize Streamlit app
 st.title("Welcome! How can I help you today?")

@@ -1,16 +1,18 @@
-import streamlit as st
 import os
+
+import numpy as np
+import requests
+import streamlit as st
 from langchain.document_loaders import TextLoader
+from langchain.embeddings.base import Embeddings
+from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
-from langchain.embeddings.base import Embeddings
-from sentence_transformers import SentenceTransformer
-from langchain_ollama import ChatOllama
-from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import requests
+from langchain_ollama import ChatOllama
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+
 
 # Web Search Function
 def web_search(query, num_results=3):
@@ -20,29 +22,40 @@ def web_search(query, num_results=3):
     response = requests.get(url)
     if response.status_code == 200:
         results = response.json().get("items", [])
-        return [{"title": item["title"], "link": item["link"]} for item in results[:num_results]]
+        return [
+            {"title": item["title"], "link": item["link"]}
+            for item in results[:num_results]
+        ]
     else:
         return []
 
+
 # Response Validation Function
 def validate_response(answer, documents, embedding_model):
-    doc_embeddings = embedding_model.embed_documents([doc.page_content for doc in documents])
+    doc_embeddings = embedding_model.embed_documents(
+        [doc.page_content for doc in documents]
+    )
     answer_embedding = embedding_model.embed_query(answer)
     similarities = cosine_similarity([answer_embedding], doc_embeddings)[0]
     avg_similarity = np.mean(similarities)
     return avg_similarity >= 0.5
 
+
 # Hallucination Percentage Calculation
 def calculate_hallucination_percentage(answer, sources, embedding_model):
     if not sources:
         return 100
-    source_texts = [source.page_content if hasattr(source, 'page_content') else source for source in sources]
+    source_texts = [
+        source.page_content if hasattr(source, "page_content") else source
+        for source in sources
+    ]
     source_embeddings = embedding_model.embed_documents(source_texts)
     answer_embedding = embedding_model.embed_query(answer)
     similarities = cosine_similarity([answer_embedding], source_embeddings)[0]
     avg_similarity = np.mean(similarities)
     hallucination_percentage = (1 - avg_similarity) * 100
     return max(0, min(hallucination_percentage, 100))
+
 
 # Embedding Model
 class HuggingFaceEmbeddings(Embeddings):
@@ -55,6 +68,7 @@ class HuggingFaceEmbeddings(Embeddings):
     def embed_query(self, text):
         return self.model.encode([text])[0]
 
+
 # RAG Application
 class RAGApplication:
     def __init__(self, retriever, llm, embedding_model):
@@ -63,7 +77,7 @@ class RAGApplication:
         self.embedding_model = embedding_model
 
     def run(self, question):
-         # Retrieve documents from the vectorstore
+        # Retrieve documents from the vectorstore
         documents = self.retriever.invoke(question)
 
         if not documents:  # Fallback to web search if no documents are found
@@ -79,11 +93,23 @@ class RAGApplication:
                     input_variables=["question", "web_results"],
                 )
                 rag_chain_with_web = prompt_with_web | self.llm | StrOutputParser()
-                answer = rag_chain_with_web.invoke({"question": question, "web_results": web_texts})
-                hallucination_percentage = calculate_hallucination_percentage(answer, web_results, self.embedding_model)
-                return {"answer": answer, "sources": web_results, "hallucination_percentage": hallucination_percentage}
+                answer = rag_chain_with_web.invoke(
+                    {"question": question, "web_results": web_texts}
+                )
+                hallucination_percentage = calculate_hallucination_percentage(
+                    answer, web_results, self.embedding_model
+                )
+                return {
+                    "answer": answer,
+                    "sources": web_results,
+                    "hallucination_percentage": hallucination_percentage,
+                }
             else:
-                return {"answer": "No reliable information found from web search.", "sources": [], "hallucination_percentage": 100}
+                return {
+                    "answer": "No reliable information found from web search.",
+                    "sources": [],
+                    "hallucination_percentage": 100,
+                }
 
         # Pro
         doc_texts = "\n".join([doc.page_content for doc in documents])
@@ -126,7 +152,9 @@ Example Questions and Expected Answers:
             input_variables=["question", "documents"],
         )
         rag_chain_with_docs = prompt_with_docs | self.llm | StrOutputParser()
-        answer = rag_chain_with_docs.invoke({"question": question, "documents": doc_texts})
+        answer = rag_chain_with_docs.invoke(
+            {"question": question, "documents": doc_texts}
+        )
 
         # Validate response
         if not validate_response(answer, documents, self.embedding_model):
@@ -142,16 +170,32 @@ Example Questions and Expected Answers:
                     input_variables=["question", "web_results"],
                 )
                 rag_chain_with_web = prompt_with_web | self.llm | StrOutputParser()
-                answer = rag_chain_with_web.invoke({"question": question, "web_results": web_texts})
-                hallucination_percentage = calculate_hallucination_percentage(answer, web_results, self.embedding_model)
-                return {"answer": answer, "sources": web_results, "hallucination_percentage": hallucination_percentage}
+                answer = rag_chain_with_web.invoke(
+                    {"question": question, "web_results": web_texts}
+                )
+                hallucination_percentage = calculate_hallucination_percentage(
+                    answer, web_results, self.embedding_model
+                )
+                return {
+                    "answer": answer,
+                    "sources": web_results,
+                    "hallucination_percentage": hallucination_percentage,
+                }
             else:
-                return {"answer": "The generated answer does not align well with available sources, and no web search results were found.", "sources": [], "hallucination_percentage": 100}
+                return {
+                    "answer": "The generated answer does not align well with available sources, and no web search results were found.",
+                    "sources": [],
+                    "hallucination_percentage": 100,
+                }
 
-        hallucination_percentage = calculate_hallucination_percentage(answer, documents, self.embedding_model)
-        return {"answer": answer, "sources": [doc.page_content for doc in documents], "hallucination_percentage": hallucination_percentage}
-
-
+        hallucination_percentage = calculate_hallucination_percentage(
+            answer, documents, self.embedding_model
+        )
+        return {
+            "answer": answer,
+            "sources": [doc.page_content for doc in documents],
+            "hallucination_percentage": hallucination_percentage,
+        }
 
 
 # Streamlit App
@@ -191,15 +235,21 @@ question = st.text_area("Ask a question:")
 if st.button("Submit"):
     if question.strip():
         with st.spinner("Generating answer..."):
-            file_paths = ['combined_text.txt']
+            file_paths = ["combined_text.txt"]
             docs = [TextLoader(file_path).load() for file_path in file_paths]
             docs_list = [item for sublist in docs for item in sublist]
-            text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=250, chunk_overlap=0)
+            text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                chunk_size=250, chunk_overlap=0
+            )
             doc_splits = text_splitter.split_documents(docs_list)
             embedding_model = HuggingFaceEmbeddings()
             index_filepath = "faiss_index"
             if os.path.exists(index_filepath):
-                vectorstore = FAISS.load_local(index_filepath, embedding_model, allow_dangerous_deserialization=True)
+                vectorstore = FAISS.load_local(
+                    index_filepath,
+                    embedding_model,
+                    allow_dangerous_deserialization=True,
+                )
             else:
                 vectorstore = FAISS.from_documents(doc_splits, embedding_model)
                 vectorstore.save_local(index_filepath)
@@ -207,7 +257,9 @@ if st.button("Submit"):
             llm = ChatOllama(model="llama3.1", temperature=0)
             rag_application = RAGApplication(retriever, llm, embedding_model)
             result = rag_application.run(question)
-            st.session_state["chats"][st.session_state["current_chat"]].append((question, result["answer"]))
+            st.session_state["chats"][st.session_state["current_chat"]].append(
+                (question, result["answer"])
+            )
             st.markdown(f"**You:** {question}")
             st.markdown(f"**AI:** {result['answer']}")
 
@@ -215,12 +267,16 @@ if st.button("Submit"):
             st.write(f"{result['hallucination_percentage']:.2f}%")
             st.subheader("Sources")
             if result["sources"]:
-              for source in result["sources"]:
-                if isinstance(source, dict) and "link" in source and "title" in source:
-                    st.markdown(f"- [{source['title']}]({source['link']})")
-                else:
-                    st.write(f"- {source}")
+                for source in result["sources"]:
+                    if (
+                        isinstance(source, dict)
+                        and "link" in source
+                        and "title" in source
+                    ):
+                        st.markdown(f"- [{source['title']}]({source['link']})")
+                    else:
+                        st.write(f"- {source}")
             else:
-              st.write("No sources available.")
+                st.write("No sources available.")
     else:
         st.error("Please enter a question before clicking the button.")
