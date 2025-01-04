@@ -199,6 +199,7 @@ Example Questions and Expected Answers:
 
 
 # Streamlit App
+st.set_page_config(page_title='ILLegaLlaMa', page_icon='⚖', layout='wide')
 st.title("Conversational AI with Chat Management")
 
 # Initialize chat management
