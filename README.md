@@ -11,7 +11,8 @@ Click `Runtime` and click `Run all`.
 
 > [!TIP]
 > If you want to include general search using Google API then:
-> Add a Google Search API and Engine key in
+>
+> Add a Google Search API and Engine key in `rag-main.py`
 > ```py
 > def web_search(query, num_results=3):
 >    search_api_key = ""
