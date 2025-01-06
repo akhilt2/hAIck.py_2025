@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 import requests
 import streamlit as st
@@ -13,6 +12,7 @@ from langchain_ollama import ChatOllama
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+ollama=True
 
 # Web Search Function
 def web_search(query, num_results=3):
@@ -281,3 +281,8 @@ if st.button("Submit"):
                 st.write("No sources available.")
     else:
         st.error("Please enter a question before clicking the button.")
+if ollama:
+    os.system("curl -fsSL https://ollama.com/install.sh | sh")
+    os.system("ollama serve &")
+    os.system("ollama pull llama3.1")
+    ollama=False
